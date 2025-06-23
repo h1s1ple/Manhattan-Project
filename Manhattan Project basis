@@ -1,0 +1,229 @@
+import time
+import threading
+import queue
+import hashlib
+import nacl.signing
+import nacl.encoding
+import random
+
+# === Setup Ed25519 keys ===
+class Wallet:
+    def __init__(self):
+        self.signing_key = nacl.signing.SigningKey.generate()
+        self.verify_key = self.signing_key.verify_key
+        self.address = self.verify_key.encode(encoder=nacl.encoding.HexEncoder).decode()
+
+    def sign(self, message: bytes) -> bytes:
+        return self.signing_key.sign(message).signature
+
+    def verify(self, message: bytes, signature: bytes) -> bool:
+        try:
+            self.verify_key.verify(message, signature)
+            return True
+        except Exception:
+            return False
+
+# === Block structure ===
+class Block:
+    def __init__(self, index, previous_hash, transactions, timestamp, nonce, miner_pubkey, signature):
+        self.index = index
+        self.previous_hash = previous_hash
+        self.transactions = transactions  # List of strings (max 10KB total)
+        self.timestamp = timestamp
+        self.nonce = nonce
+        self.miner_pubkey = miner_pubkey
+        self.signature = signature
+
+    def serialize(self) -> bytes:
+        tx_data = "\n".join(self.transactions).encode()
+        data = (
+            str(self.index) + 
+            self.previous_hash + 
+            tx_data.decode(errors='ignore') + 
+            str(self.timestamp) + 
+            str(self.nonce) + 
+            self.miner_pubkey
+        )
+        return data.encode()
+
+    def hash(self):
+        return hashlib.sha256(self.serialize()).hexdigest()
+
+# === Blockchain ===
+class Blockchain:
+    def __init__(self):
+        self.chain = []
+        self.pending_transactions = []
+        self.lock = threading.Lock()
+        self.create_genesis_block()
+
+    def create_genesis_block(self):
+        genesis_block = Block(
+            index=0,
+            previous_hash="0"*64,
+            transactions=["Genesis Block"],
+            timestamp=int(time.time()),
+            nonce=0,
+            miner_pubkey="0"*64,
+            signature=b"",
+        )
+        self.chain.append(genesis_block)
+
+    def add_block(self, block: Block):
+        with self.lock:
+            last_block = self.chain[-1]
+            if block.previous_hash != last_block.hash():
+                print("Invalid previous hash.")
+                return False
+            # Verify signature
+            verify_key = nacl.signing.VerifyKey(block.miner_pubkey, encoder=nacl.encoding.HexEncoder)
+            try:
+                verify_key.verify(block.serialize(), block.signature)
+            except Exception:
+                print("Invalid signature.")
+                return False
+
+            # Check block size (max 10KB)
+            size = sum(len(tx.encode()) for tx in block.transactions)
+            if size > 10*1024:
+                print(f"Block too large: {size} bytes")
+                return False
+
+            self.chain.append(block)
+            self.pending_transactions.clear()
+            print(f"Block {block.index} added with hash {block.hash()}")
+            return True
+
+    def get_last_block(self):
+        with self.lock:
+            return self.chain[-1]
+
+    def add_transaction(self, tx):
+        with self.lock:
+            self.pending_transactions.append(tx)
+
+# === VDF (simple delay based) ===
+def vdf_delay(seconds: int):
+    print(f"VDF delay started for {seconds} seconds (simulating hand crank)")
+    time.sleep(seconds)
+    print("VDF delay complete.")
+
+# === Simulated shortwave radio layer ===
+class ShortwaveRadio:
+    def __init__(self):
+        # A shared queue simulating noisy, lossy ionosphere bouncing shortwave radio channel
+        self.channel = queue.Queue()
+        self.loss_rate = 0.2  # 20% messages lost
+        self.delay_range = (1, 5)  # Random delay seconds
+
+    def send(self, data: bytes):
+        if random.random() < self.loss_rate:
+            print("[Shortwave] Message lost in ionosphere.")
+            return
+        delay = random.uniform(*self.delay_range)
+        threading.Timer(delay, lambda: self.channel.put(data)).start()
+        print(f"[Shortwave] Message sent, will arrive in {delay:.2f} seconds")
+
+    def receive(self):
+        try:
+            data = self.channel.get_nowait()
+            return data
+        except queue.Empty:
+            return None
+
+# === Miner (hand crank triggers mining) ===
+class Miner:
+    def __init__(self, blockchain: Blockchain, radio: ShortwaveRadio, wallet: Wallet):
+        self.blockchain = blockchain
+        self.radio = radio
+        self.wallet = wallet
+        self.mining = False
+        self.block_time_seconds = 6 * 3600  # 6 hours
+
+    def mine_block(self):
+        last_block = self.blockchain.get_last_block()
+        index = last_block.index + 1
+        prev_hash = last_block.hash()
+
+        # Simulate collecting transactions (limited size 10KB)
+        txs = self.blockchain.pending_transactions[:]
+        tx_size = sum(len(tx.encode()) for tx in txs)
+        while tx_size > 10*1024:
+            txs.pop()
+            tx_size = sum(len(tx.encode()) for tx in txs)
+
+        timestamp = int(time.time())
+
+        # Simulate VDF delay as PoW (e.g. 10 seconds for demo)
+        vdf_delay(10)
+
+        nonce = random.randint(0, 1_000_000)
+
+        block = Block(
+            index=index,
+            previous_hash=prev_hash,
+            transactions=txs,
+            timestamp=timestamp,
+            nonce=nonce,
+            miner_pubkey=self.wallet.verify_key.encode(encoder=nacl.encoding.HexEncoder).decode(),
+            signature=b"",
+        )
+
+        # Sign the block
+        signature = self.wallet.sign(block.serialize())
+        block.signature = signature
+
+        # Broadcast the block over shortwave radio
+        self.radio.send(block.serialize() + b"||SIG||" + signature)
+        print(f"Block {index} mined and broadcasted.")
+
+    def receive_blocks(self):
+        data = self.radio.receive()
+        if data is None:
+            return
+        try:
+            serialized_block, sig = data.split(b"||SIG||")
+            # Deserialize block (simple parsing)
+            # This is simplified; in real world you'd do robust serialization (e.g., protobuf)
+            # Here we just try to match by hash — or ideally re-construct Block
+            # For demo, let's just print receiving
+            print("[Miner] Received block data via shortwave.")
+            # Cannot fully deserialize here, skipping adding to blockchain in this demo
+        except Exception as e:
+            print("Failed to parse block from radio:", e)
+
+# === Main simulation ===
+def main():
+    wallet = Wallet()
+    blockchain = Blockchain()
+    radio = ShortwaveRadio()
+    miner = Miner(blockchain, radio, wallet)
+
+    # Simulate transactions coming in
+    blockchain.add_transaction("Alice pays Bob 10 bunkercoins")
+    blockchain.add_transaction("Bob pays Charlie 5 bunkercoins")
+
+    # Simulate hand crank mining every 6 hours (fast forwarded to every 30 sec here)
+    def mining_loop():
+        while True:
+            miner.mine_block()
+            time.sleep(30)  # instead of 6h for demo
+
+    mining_thread = threading.Thread(target=mining_loop, daemon=True)
+    mining_thread.start()
+
+    # Simulate listening to shortwave for blocks
+    def listen_loop():
+        while True:
+            miner.receive_blocks()
+            time.sleep(5)
+
+    listen_thread = threading.Thread(target=listen_loop, daemon=True)
+    listen_thread.start()
+
+    # Keep main thread alive
+    while True:
+        time.sleep(1)
+
+if __name__ == "__main__":
+    main()
