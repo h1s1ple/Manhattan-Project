@@ -1,0 +1,84 @@
+🧱 Phase 0: Ideation & Research
+Goal: Define the scope, constraints, and threat model for Bunker Coin.
+
+ Define "bunker-grade" requirements: works without internet, hand-cranked, low bandwidth.
+
+ Decide on chain: Solana (fast, cheap, Ed25519 compatible).
+
+ Explore Solana SPL Token framework.
+
+ Research shortwave radio protocols (JS8Call, APRS, Winlink, RTTY, etc.).
+
+ Study VDFs (e.g., Chia’s use, RSA delay functions, etc.).
+
+🚧 Phase 1: Minimal Viable Bunker Coin (MVBC)
+Goal: Deploy a basic, functioning Solana-based token + concept logic.
+
+✅ On-Chain:
+ Create Solana wallet & key management tools.
+
+ Mint an SPL token (BUNKR) using spl-token CLI or solana-py.
+
+ Build a simple wallet CLI/app to send/receive BUNKR.
+
+✅ Off-Chain (Simulated Bunker Mode):
+ Simulate block emission every 6h (conceptual VDF delay).
+
+ Encode and decode 10KB “blocks” of transactions as plaintext messages.
+
+ Simulate shortwave delivery via lossy queues, delays, and decoding.
+
+📡 Phase 2: Real Shortwave Broadcast Layer
+Goal: Implement actual data over shortwave radio transmission.
+
+ Choose protocol (likely JS8Call for low-rate text).
+
+ Build radio_tx.py to encode blocks into JS8Call-compatible text.
+
+ Build radio_rx.py to listen, decode, and parse blocks from air.
+
+ Use Raspberry Pi + SDR (or Yaesu/Icom) to transmit/receive.
+
+ Create fallback encoding (base64 or compression) for block text.
+
+⚙️ Phase 3: Hand-Crank VDF PoW
+Goal: Build delay-based proof-of-work as a bottleneck to prevent spam.
+
+ Implement simple VDF (iterated hash loop or repeated squaring).
+
+ Bind delay to block creation: 10s = demo, 6h = mainnet.
+
+ Optionally explore FPGA/RPi for “crank” operation to verify manually.
+
+🔐 Phase 4: Block Propagation & Consensus (Layer 2)
+Goal: Build logic to validate shortwave-received blocks and accept the canonical one.
+
+ Assign unique bunker block IDs per epoch (e.g., every 6h UTC).
+
+ Choose longest valid chain or first-valid as canonical.
+
+ Add lightweight signature verification (Ed25519 over text blocks).
+
+ Cache verified blocks locally and sync them back when online.
+
+🧪 Phase 5: Public Testnet + Field Testing
+Goal: Prove this works in poor or no internet environments.
+
+ Deploy testnet SPL token.
+
+ Send blocks over real shortwave to another bunker node.
+
+ Test in areas with no internet or through Faraday cages.
+
+ Compare propagation time vs. internet fallback.
+
+🛰️ Phase 6: Full Bunker Launch
+Goal: Mainnet Bunker Coin with shortwave fallback layer and solar/hand-powered tools.
+
+ Release bunker wallet (CLI + GUI).
+
+ Ship RPi image with pre-installed wallet + shortwave software.
+
+ Create printable “BunkerOps Manual” for extreme situations.
+
+ Push educational content on how to bootstrap value in collapse scenarios.
