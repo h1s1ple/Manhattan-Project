@@ -1,0 +1,43 @@
+ Market & Momentum
+✅ Launched on Solana mainnet
+
+✅ Token is actively trading and liquid
+
+⏳ Listings on aggregators pending (CoinGecko/CoinMarketCap)
+
+🌐 Community & Social
+✅ Twitter/X community exploding with memes, threads, and engagement
+
+📡 Tech Vision & Progress
+✅ V1 token contract live (SPL standard)
+
+✅ Block simulation logic for 6h interval working in test mode
+
+✅ Simulated shortwave message queue tested in devnet
+
+✅ Conceptual PoW via VDF included in reference prototype
+
+🚀 Dev & Ecosystem
+✅ Core GitHub repo initialized with bunker logic
+
+✅ Trialing Devs: multiple contributors being reviewed now
+
+✅ Several community devs submitting PRs & PoC radioscripts
+
+✅ Initial contributors appearing from Solana ecosystem
+
+⏳ Open bounty board being drafted for contributors
+
+🧠 Support & Credibility
+✅ Anatoly (Solana founder) publicly acknowledged tech concept
+
+✅ Growing belief in the "bunker coin" layer as a L2 fallback system
+
+🔜 Coming Next
+Finalize radio-to-chain encoder prototype
+
+Launch test of shortwave-to-Solana transaction flow
+
+Push first real "bunker block" via off-grid conditions
+
+Develop GUI for the hand crank + VDF miner
